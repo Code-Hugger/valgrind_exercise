@@ -1,0 +1,105 @@
+= Data Structures
+:source-highlighter: pygments
+:pygments-style: friendly
+:icons: font
+:toc:
+
+== Challenge
+
+Using the information contained in the narrative, complete the coding exercise that follows.
+The coding exercise is worth 100 points.
+
+=== Learning Objectives
+
+* Learn the basics of Valgrind
+* Identify common memory corruption vulnerabilities and how to fix them
+
+== Narrative
+
+The C programming language is unique amongst other higher-level programming languages in its capacity to directly manage how memory is allocated on the stack and heap. But as the common saying goes, "with great power comes great responsibility". As a C programmer, you are solely responsible for many of the operations a higher-level language like Python and Java automatically handle. If memory is not freed, the C compiler will not automatically implement some sort of "garbage collector" to free unused space. If a programmer does not manage memory correctly, then the compiled program might be vulnerable to various exploitation techniques like buffer overflows, heap overflows, or use-after-free.
+
+Over the years, as operating systems and software implements new features, code bases grow larger and become harder to maintain. For example, the Windows operating system has about 50 million lines of C and C++ code. With a code base like that, how do software engineers validate the security of their code?
+
+One very popular set of tools among programmers is Valgrind. Valgrind is made up of tools to debug and profile applications in languages like C/C++. The most popular tool in Valgrind is Memcheck. It can detect many memory-related errors that are common in C/C++ programs and can lead to crashes and unpredictable behaviour.
+
+=== Memory Leaks
+
+[NOTE]
+The quick start guide for Valgrind is available at http://valgrind.org/docs/manual/quick-start.html
+
+Valgrind should already be installed on your Linux machine. To check, run at the command prompt:
+[literal]
+valgrind --version
+
+To demonstrate a simple use case for Valgrind, we have written and compiled the following code:
+
+[source,c,linenums]
+.demo.c
+----
+include::demo.c[]
+----
+
+Looking at the above source code, we can identify two issues. The first issue is that line 6 is setting the 11th value in the array `int* x` to zero. When we use `malloc` to dynamically allocate the memory for `x`, we pass the value `10 * sizeof(int)` as the size parameter; this means that we have allocated space for 10 integers on the heap. Assigning 0 to the 11th value, which has not been allocated, is commonly called a heap overrun.
+
+The second issue is failing to call `free(x)` after we call `malloc` to initialize x. Although the operating system will automatically recover all allocated memory upon the program exiting, it is still good practice to always free dynamically allocated memory once we no longer need to reference it. As you write more complex programs, you will need to use more memory. Failing to free memory can result in unnecessary consumption of resources. As the program continues to run for an extended period of time, the memory leak may prevent your program along with other programs from working
+correctly.
+
+=== Memcheck
+
+Even though demo.c compiles without any errors and exits upon completion with no errors, it is trivial to modify this code and create an error condition. `demo2.c`
+creates a simple for loop that executes `f()` 5 times. Upon execution of `demo2`, our program immediately fails and prints a pretty cryptic error message about something in `malloc.c`
+
+If we run Valgrind's Memcheck tool on either `demo` or `demo2`, we will get a much more useful error message.
+
+[literal]
+==4808== Invalid write of size 4
+==4808==    at 0x1086CE: f (demo.c:6)
+==4808==    by 0x1086DF: main (demo.c:11)
+==4808==  Address 0x51d7068 is 0 bytes after a block of size 40 alloc'd
+==4808==    at 0x4C2BBAF: malloc (vg_replace_malloc.c:299)
+==4808==    by 0x1086C1: f (demo.c:5)
+==4808==    by 0x1086DF: main (demo.c:11)
+==4808==
+==4808== HEAP SUMMARY:
+==4808==     in use at exit: 40 bytes in 1 blocks
+==4808==   total heap usage: 1 allocs, 0 frees, 40 bytes allocated
+
+
+[NOTE]
+In order for Valgrind to display the specific line numbers next to the
+detected errors, you need to use the `-g` flag when compiling the program
+with gcc.
+
+In the above error message, we see two errors. The first is we are writing a
+value to memory of size four. This corresponds to `x[10] = 0;` in demo.c
+even though our array is only 10 integers long (indices 0 to 9). The second
+error under `HEAP SUMMARY:` is stating that we have allocated memory but
+failed to free the allocation. Ideally, if all memory has been free'd, we
+will instead see the output:
+
+[literal]
+HEAP SUMMARY:
+==6017==     in use at exit: 0 bytes in 0 blocks
+==6017==   total heap usage: 1 allocs, 1 frees, 40 bytes allocated
+==6017== 
+==6017== All heap blocks were freed -- no leaks are possible
+
+To learn about the other tools available within Valgrind beyond Memcheck,
+check out their http://valgrind.org/docs/manual/manual.html[User Manual] .
+
+== Coding Exercise
+
+Modify program.c to remove all of the bugs that cause the program to crash or
+ not work correctly. The program should output the following:
+
+[literal]
+ C
+ sells
+ C
+ shells
+ by
+ the
+ C
+ shore
+ #ShellCollectingClub
+
